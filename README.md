@@ -1,4 +1,4 @@
-The following is mostly AI slop directions written by my agent thinking everyone will work the same way I did. They won't. So there's a lot of assumptions being made here. I'll come in with *edit - not really, etc. to try and right the ship as I can.*
+The following is mostly AI directions written by my agent thinking everyone will work the same way I did. They won't. So there's a lot of assumptions being made here. I'll come in with *edit - not really, etc. to try and right the ship as I can.*
 
 # Open Brain
 
