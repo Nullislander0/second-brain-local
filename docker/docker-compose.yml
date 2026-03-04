@@ -1,0 +1,93 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: open_brain_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-open_brain}
+      POSTGRES_USER: ${POSTGRES_USER:-brain_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - brain_data:/var/lib/postgresql/data
+      - ../db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ../db/02_token_usage.sql:/docker-entrypoint-initdb.d/02_token_usage.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-brain_user} -d ${POSTGRES_DB:-open_brain}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open_brain_webui
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:8080"
+    volumes:
+      - webui_data:/app/backend/data
+    environment:
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OPENAI_API_BASE_URLS=http://host.docker.internal:9099;https://integrate.api.nvidia.com/v1
+      - OPENAI_API_KEYS=0p3n-w3bu!;${NVIDIA_API_KEY}
+      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-open-brain-secret}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  pipelines:
+    image: ghcr.io/open-webui/pipelines:main
+    container_name: open_brain_pipelines
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9099:9099"
+    volumes:
+      - pipelines_data:/app/pipelines
+      - ../pipelines:/app/pipelines/custom:ro
+    entrypoint: ["/bin/bash", "-c", "cp /app/pipelines/custom/*.py /app/pipelines/ 2>/dev/null; exec bash start.sh"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  capture-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.capture
+    container_name: open_brain_capture
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8100:8100"
+    environment:
+      # Inside Docker, reach postgres by service name on internal port
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-open_brain}
+      POSTGRES_USER: ${POSTGRES_USER:-brain_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      # Ollama runs on the host
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-mxbai-embed-large}
+      OLLAMA_CLASSIFIER_MODEL: ${OLLAMA_CLASSIFIER_MODEL:-qwen3:8b}
+      OLLAMA_EXTRACTOR_MODEL: ${OLLAMA_EXTRACTOR_MODEL:-qwen3:8b}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8100/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  brain_data:
+    name: open_brain_pgdata
+  webui_data:
+    name: open_brain_webui
+  pipelines_data:
+    name: open_brain_pipelines

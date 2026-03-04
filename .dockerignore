@@ -1,0 +1,36 @@
+# Version control
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+.pytest_cache
+.mypy_cache
+
+# Tests
+tests/
+
+# Scripts (seed data, etc.)
+scripts/
+
+# Docker (avoid recursive context)
+docker/
+
+# Docs
+docs/
+README.md
+*.md
+
+# IDE
+.vscode/
+.idea/
+
+# Environment (docker/.env is separate)
+.env.example
+
+# Claude
+.claude/
+.mcp.json
