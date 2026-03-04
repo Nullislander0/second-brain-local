@@ -54,7 +54,7 @@ cp docker/.env.example docker/.env
 Edit `.env` and `docker/.env` to set your preferred models, database password, and optional API keys.
 
 ### 2. Pull Ollama models
-*So you don't need these ones, gpt-oss:20b is kinda bad at this even if it's great at chat, IMHO, but really just use a good, fast one and a small task one like mxbai-embed-large*
+*So you don't need these ones, gpt-oss:20b is kinda bad at this even if it's great at chat, IMHO, but really just use a good, fast one (like qwen3:8b and a small task one like mxbai-embed-large - all others are just if you want to chat with the WebUI window about what it's recorded about you*
 ```bash
 # Embedding model (1024 dimensions)
 ollama pull mxbai-embed-large
