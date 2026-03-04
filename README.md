@@ -1,6 +1,8 @@
+The following is mostly AI slop directions written by my agent thinking everyone will work the same way I did. They won't. So there's a lot of assumptions being made here. I'll come in with *edit - not really, etc. to try and right the ship as I can.*
+
 # Open Brain
 
-A local "second brain" that passively captures, classifies, embeds, and stores context from AI interactions, then exposes that memory through a chat interface (Open WebUI) and MCP tools for Claude Code.
+A local "second brain" that passively captures, classifies, embeds, and stores context from AI interactions, then exposes that memory through a chat interface (Open WebUI) and MCP tools for Claude Code. *It's also supposed to be discoverable and searchable by claude code and able to be linked to that automatically on startup. I mean you could just ask claude code to spin up a project and do that, but I'd like to have some instructions for the casuals, too. This is the real utility of this tool IMHO: to be able to have your agents search relevant data from your ever-evolving memory database.*
 
 Everything runs on your local workstation. No cloud services required (though you can optionally connect external APIs for premium chat models).
 
@@ -52,7 +54,7 @@ cp docker/.env.example docker/.env
 Edit `.env` and `docker/.env` to set your preferred models, database password, and optional API keys.
 
 ### 2. Pull Ollama models
-
+*So you don't need these ones, gpt-oss:20b is kinda bad at this even if it's great at chat, IMHO, but really just use a good, fast one and a small task one like mxbai-embed-large*
 ```bash
 # Embedding model (1024 dimensions)
 ollama pull mxbai-embed-large
@@ -65,12 +67,12 @@ ollama pull gpt-oss:20b
 ```
 
 ### 3. Start the full stack
-
+*Firstly I think you need to make sure Ollama is up - so run that and that will make it available to consume. Pretty sure you could reconfigure this to work with other local LLM hosting tools, too, but this is the way I'm using it now - subject to change*
 ```bash
 cd docker
 docker compose up -d
 ```
-
+*Or just open docker from the search bar - it will do what it needs to do once configured*
 This starts four services:
 
 | Service | Container | Port | Purpose |
@@ -87,14 +89,14 @@ docker compose ps
 ```
 
 ### 4. Install Python dependencies (for MCP server and local development)
-
+*Maybe do this before you startup the whole stack... thinking my agent messed this up, but whatever...*
 ```bash
 pip install -r requirements.txt
 ```
 
 ### 5. Open the chat interface
 
-Go to **http://localhost:3000** and create your account. This is a local-only account — Open WebUI runs entirely on your machine.
+Go to **http://localhost:3000** and create your account. This is a local-only account, *so you can put whatever you want in the login* — Open WebUI runs entirely on your machine.
 
 ## How It Works
 
@@ -186,7 +188,7 @@ A status line indicator shows brain status at the bottom of every Claude Code se
 - 🧠 **Ollama not running** (yellow) — containers up but no LLM
 - 🧠 **Docker not running** (yellow) — Ollama up but no database
 - 🧠 **Brain offline** (red) — both down
-
+*The emojis don't display in the terminal, FYI - not yet anyway, but LMK if you fix it somehow. The other parts do work, however*
 Configured in `~/.claude/settings.json` and `~/.claude/statusline.sh`.
 
 ## Capture Pipeline (Programmatic)
