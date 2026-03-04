@@ -59,9 +59,6 @@ ollama pull mxbai-embed-large
 
 # Classifier and extractor model
 ollama pull qwen3:8b
-
-# A chat model (optional — Open WebUI also supports external APIs)
-ollama pull gpt-oss:20b
 ```
 
 ### 3. Start the full stack
