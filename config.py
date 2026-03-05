@@ -39,5 +39,18 @@ OLLAMA_EXTRACTOR_MODEL = _get("OLLAMA_EXTRACTOR_MODEL", "llama3.1:8b")
 MCP_SERVER_NAME = _get("MCP_SERVER_NAME", "open-brain")
 MCP_AUTH_TOKEN = _get("MCP_AUTH_TOKEN", "changeme")
 
+# -- Token Budget --
+MONTHLY_TOKEN_BUDGET = float(_get("MONTHLY_TOKEN_BUDGET", "10.0"))
+
+# Per-model cost rates (per 1k tokens).  Ollama is free; add cloud rates here.
+# Format: {"provider/model": {"prompt_per_1k": X, "completion_per_1k": Y}}
+import json as _json
+
+_raw_costs = os.getenv("TOKEN_COSTS", "{}")
+try:
+    TOKEN_COSTS: dict = _json.loads(_raw_costs)
+except Exception:
+    TOKEN_COSTS = {}
+
 # -- Optional tunnel --
 TUNNEL_AUTH_TOKEN = os.getenv("TUNNEL_AUTH_TOKEN", "")

@@ -13,8 +13,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+
 import config  # noqa: E402
 from capture.pipeline import capture  # noqa: E402
+from capture.token_tracker import get_stats as get_token_stats, log_usage  # noqa: E402
 from db_client.client import close_pool  # noqa: E402
 from mcp_server.tools.search import search_brain  # noqa: E402
 
@@ -58,6 +62,49 @@ async def search_endpoint(req: SearchRequest):
     """Quick semantic search — used to inject context into conversations."""
     result = await search_brain(query=req.query, limit=req.limit)
     return result
+
+
+# ── Token tracking endpoints ──────────────────────────────────────────
+
+class TokenUsageRequest(BaseModel):
+    provider: str
+    model: str
+    prompt_tokens: int
+    completion_tokens: int = 0
+    operation: str = "chat"
+
+
+@app.post("/token-usage")
+async def token_usage_endpoint(req: TokenUsageRequest):
+    """Accept explicit token logs from external callers."""
+    await log_usage(
+        provider=req.provider,
+        model=req.model,
+        prompt_tokens=req.prompt_tokens,
+        completion_tokens=req.completion_tokens,
+        operation=req.operation,
+    )
+    return {"status": "logged"}
+
+
+@app.get("/api/token-stats")
+async def token_stats_endpoint(days: int = 30):
+    """Return token usage stats as JSON."""
+    return await get_token_stats(days=days)
+
+
+# ── Dashboard ─────────────────────────────────────────────────────────
+
+_static_dir = Path(__file__).resolve().parent / "static"
+
+
+@app.get("/dashboard")
+async def dashboard():
+    """Serve the token usage dashboard."""
+    html_file = _static_dir / "dashboard.html"
+    if not html_file.exists():
+        return HTMLResponse("<h1>Dashboard not built yet</h1>", status_code=404)
+    return HTMLResponse(html_file.read_text(encoding="utf-8"))
 
 
 @app.get("/health")

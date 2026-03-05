@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Open Brain — Token Usage</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3a;
+    --text: #e4e4e7; --dim: #71717a; --accent: #6366f1;
+    --green: #22c55e; --yellow: #eab308; --red: #ef4444;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg); color: var(--text); padding: 24px;
+    max-width: 1100px; margin: 0 auto;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 4px; }
+  .subtitle { color: var(--dim); font-size: 0.85rem; margin-bottom: 24px; }
+  .subtitle a { color: var(--accent); text-decoration: none; }
+
+  /* Cards row */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px;
+  }
+  .card-label { font-size: 0.75rem; color: var(--dim); text-transform: uppercase; letter-spacing: 0.05em; }
+  .card-value { font-size: 1.75rem; font-weight: 700; margin-top: 4px; }
+  .card-sub { font-size: 0.8rem; color: var(--dim); margin-top: 2px; }
+
+  /* Budget bar */
+  .budget-bar-outer {
+    background: var(--border); border-radius: 8px; height: 12px;
+    margin-top: 10px; overflow: hidden;
+  }
+  .budget-bar-inner { height: 100%; border-radius: 8px; transition: width 0.5s; }
+
+  /* Sections */
+  .section { margin-bottom: 24px; }
+  .section-title { font-size: 1rem; font-weight: 600; margin-bottom: 12px; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; }
+  th, td {
+    text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+  }
+  th { color: var(--dim); font-weight: 500; font-size: 0.75rem; text-transform: uppercase; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  th.num { text-align: right; }
+
+  /* Chart */
+  .chart-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px;
+  }
+  canvas { max-height: 260px; }
+
+  /* Loading / error */
+  .status { text-align: center; padding: 40px; color: var(--dim); }
+  .status.error { color: var(--red); }
+</style>
+</head>
+<body>
+
+<h1>Open Brain — Token Usage</h1>
+<p class="subtitle">
+  Capture pipeline token tracking &middot;
+  <a href="http://localhost:3000" target="_blank">Open WebUI</a>
+</p>
+
+<div id="content">
+  <div class="status" id="loading">Loading...</div>
+</div>
+
+<script>
+const API = '/api/token-stats';
+
+function fmt(n) {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
+  return n.toLocaleString();
+}
+function fmtCost(n) { return '$' + n.toFixed(4); }
+
+function budgetColor(pct) {
+  if (pct >= 100) return 'var(--red)';
+  if (pct >= 80) return 'var(--yellow)';
+  return 'var(--green)';
+}
+
+async function load() {
+  const el = document.getElementById('content');
+  try {
+    const resp = await fetch(API + '?days=30');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const d = await resp.json();
+    render(el, d);
+  } catch (e) {
+    el.innerHTML = `<div class="status error">Failed to load: ${e.message}</div>`;
+  }
+}
+
+function render(el, d) {
+  const s = d.summary;
+  const b = d.budget;
+  const barPct = Math.min(b.percent_used, 100);
+  const barColor = budgetColor(b.percent_used);
+
+  let html = `
+  <!-- Summary cards -->
+  <div class="cards">
+    <div class="card">
+      <div class="card-label">Today</div>
+      <div class="card-value">${fmt(d.today.tokens)}</div>
+      <div class="card-sub">${fmtCost(d.today.cost)}</div>
+    </div>
+    <div class="card">
+      <div class="card-label">This Month</div>
+      <div class="card-value">${fmt(d.month.tokens)}</div>
+      <div class="card-sub">${fmtCost(d.month.cost)}</div>
+    </div>
+    <div class="card">
+      <div class="card-label">30-Day Total</div>
+      <div class="card-value">${fmt(s.total_tokens)}</div>
+      <div class="card-sub">${s.total_requests} requests &middot; ${fmtCost(s.total_cost)}</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Budget (Monthly)</div>
+      <div class="card-value">${b.monthly_limit > 0 ? b.percent_used.toFixed(1) + '%' : 'No limit'}</div>
+      <div class="card-sub">${fmtCost(b.monthly_spent)} / ${b.monthly_limit > 0 ? fmtCost(b.monthly_limit) : '&infin;'}</div>
+      ${b.monthly_limit > 0 ? `
+      <div class="budget-bar-outer">
+        <div class="budget-bar-inner" style="width:${barPct}%;background:${barColor}"></div>
+      </div>` : ''}
+    </div>
+  </div>`;
+
+  // By model table
+  if (d.by_model.length) {
+    html += `
+    <div class="section">
+      <div class="section-title">By Model</div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table>
+          <tr><th>Provider</th><th>Model</th><th class="num">Prompt</th><th class="num">Completion</th><th class="num">Total</th><th class="num">Cost</th><th class="num">Requests</th></tr>
+          ${d.by_model.map(r => `
+          <tr>
+            <td>${r.provider}</td><td>${r.model}</td>
+            <td class="num">${fmt(r.prompt)}</td><td class="num">${fmt(r.completion)}</td>
+            <td class="num">${fmt(r.total)}</td><td class="num">${fmtCost(r.cost)}</td>
+            <td class="num">${r.requests}</td>
+          </tr>`).join('')}
+        </table>
+      </div>
+    </div>`;
+  }
+
+  // By operation table
+  if (d.by_operation.length) {
+    html += `
+    <div class="section">
+      <div class="section-title">By Operation</div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table>
+          <tr><th>Operation</th><th class="num">Tokens</th><th class="num">Requests</th></tr>
+          ${d.by_operation.map(r => `
+          <tr><td>${r.operation}</td><td class="num">${fmt(r.tokens)}</td><td class="num">${r.requests}</td></tr>`).join('')}
+        </table>
+      </div>
+    </div>`;
+  }
+
+  // Daily trend chart
+  if (d.daily.length) {
+    html += `
+    <div class="section">
+      <div class="section-title">30-Day Trend</div>
+      <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+    </div>`;
+  }
+
+  el.innerHTML = html;
+
+  // Draw chart
+  if (d.daily.length) {
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: d.daily.map(r => r.day),
+        datasets: [{
+          label: 'Tokens',
+          data: d.daily.map(r => r.tokens),
+          borderColor: '#6366f1',
+          backgroundColor: 'rgba(99,102,241,0.1)',
+          fill: true, tension: 0.3, pointRadius: 2,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: {
+            ticks: { color: '#71717a', maxTicksLimit: 10 },
+            grid: { color: '#2a2d3a' },
+          },
+          y: {
+            ticks: { color: '#71717a', callback: v => fmt(v) },
+            grid: { color: '#2a2d3a' },
+          }
+        }
+      }
+    });
+  }
+}
+
+load();
+// Auto-refresh every 60 seconds
+setInterval(load, 60000);
+</script>
+</body>
+</html>
